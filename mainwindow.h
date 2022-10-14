@@ -2,12 +2,11 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <vector>
+#include <QtGui>
+#include <QtCore>
 
-QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
-QT_END_NAMESPACE
-
-class MainWindow : public QMainWindow
+class MainWindow : public QWidget
 {
     Q_OBJECT
 
@@ -16,6 +15,23 @@ public:
     ~MainWindow();
 
 private:
-    Ui::MainWindow *ui;
+    void play();
+    void spawnApple();
+    void keyPressEvent(QKeyEvent *k);
+    void paintEvent(QPaintEvent *p);
+    bool checkHitSnake(QPoint pt);
+    bool checkHitWall(QPoint pt);
+
+    QTimer *timer;
+    std::vector<QPoint> snake;
+    QPoint apple;
+    QPen snakePen;
+    QPen applePen;
+    enum class Direction {Up, Down, Left, Right, Start};
+    Direction d;
+
+    int sizeX;
+    int sizeY;
+    int sizeBlock;
 };
 #endif // MAINWINDOW_H
