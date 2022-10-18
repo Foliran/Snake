@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include <QDebug>
-
+#include <QMessageBox>
 #include <time.h>
 #include <stdlib.h>
 
@@ -17,8 +17,8 @@ MainWindow::MainWindow(QWidget *parent):  QWidget(parent)
     setStyleSheet("background-color: black");
 
     //initialisere Timer
-    QTimer *timer = new QTimer();
-    timer->start(500);
+    timer = new QTimer();
+    //timer->start(300);
     connect(timer, &QTimer::timeout, this, &MainWindow::play);
 
     //initialisere pen
@@ -26,12 +26,13 @@ MainWindow::MainWindow(QWidget *parent):  QWidget(parent)
     QPen applePen(Qt::red, sizeBlock);
 
     //Erzeuge Schlange, die nach rechts läuft
-    int xHead = sizeX / 2;
-    int yHead = sizeY / 2;
-    qDebug() << QString::number(xHead) << ", " << QString::number(yHead);
-    snake.push_back(QPoint(xHead, yHead));
-    snake.push_back(QPoint(xHead-sizeBlock, yHead));
+    //int xHead = 240;//sizeX / 2;
+    //int yHead = 240;//sizeY / 2;
+    //qDebug() << QString::number(xHead) << ", " << QString::number(yHead);
+    //snake.push_back(QPoint(xHead, yHead));
+    //snake.push_back(QPoint(xHead-sizeBlock, yHead));
 
+    start();
     //Erzeuge Apfel
     spawnApple();
 }
@@ -41,7 +42,21 @@ MainWindow::~MainWindow()
 
 }
 
+void MainWindow::start() {
+    d = Direction::Start;
+    timer->start(200);
+    //connect(timer, &QTimer::timeout, this, &MainWindow::play);
+    int xHead = 240;//sizeX / 2;
+    int yHead = 240;//sizeY / 2;
+    qDebug() << QString::number(xHead) << ", " << QString::number(yHead);
+    snake.clear();
+    snake.push_back(QPoint(xHead, yHead));
+    snake.push_back(QPoint(xHead-sizeBlock, yHead));
+
+}
+
 void MainWindow::play() {
+    qDebug() << "play()";
     /*
      * Ablauf: Checke ob Apfel existiert
      *          nein:
@@ -53,6 +68,55 @@ void MainWindow::play() {
      *              nein: weitermachen
      *              ja: Setze Head auf Apfel Position, verlängere Schlange um 1
      */
+    if(!(apple.x() >= 0 && apple.y() >= 0)) {
+        spawnApple();
+    }
+    //bewege Schlange
+    QPoint head = snake[0];
+    switch(d) {
+        case Direction::Down:
+            snake.insert(snake.begin(), QPoint(head.x(), head.y()+sizeBlock));
+            snake.pop_back();
+            break;
+        case Direction::Up:
+            snake.insert(snake.begin(), QPoint(head.x(), head.y()-sizeBlock));
+            snake.pop_back();
+            break;
+        case Direction::Left:
+            snake.insert(snake.begin(), QPoint(head.x()-sizeBlock, head.y()));
+            snake.pop_back();
+            break;
+        case Direction::Right:
+            snake.insert(snake.begin(), QPoint(head.x()+sizeBlock, head.y()));
+            snake.pop_back();
+            break;
+        default:
+            break;
+    }
+    update();
+
+    //Checke ob Wand oder Schlange getroffen
+    if(checkHitSnake(snake[0]) || checkHitWall(snake[0])) {
+        timer->stop();
+        QMessageBox msgBox;
+        msgBox.setText("Game Over!");
+        msgBox.setInformativeText("Nochmal spielen?");
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        msgBox.setDefaultButton(QMessageBox::No);
+        int ret = msgBox.exec();
+        switch(ret) {
+            case QMessageBox::Yes:
+                start();
+                break;
+            case QMessageBox::No:
+                msgBox.close();
+        }
+    }
+    if(snake[0].x() == apple.x() && snake[0].y() == apple.y()) {
+        snake.insert(snake.begin(), QPoint(apple.x(), apple.y()));
+        apple.setX(-1);
+        apple.setY(-1);
+    }
 }
 
 void MainWindow::spawnApple() {
@@ -70,43 +134,50 @@ void MainWindow::spawnApple() {
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *k) {
-    switch(k->key()){
-        case Qt::Key_Up:
-            d = Direction::Up;
-            qDebug() << "Up";
-            break;
-        case Qt::Key_Down:
-            d = Direction::Down;
-            qDebug() << "Down";
-            break;
-        case Qt::Key_Left:
-            d = Direction::Left;
-            qDebug() << "Left";
-            break;
-        case Qt::Key_Right:
-            d = Direction::Right;
-            qDebug() << "Right";
-            break;
-        default:
-            break;
+    if(!((k->key() == Qt::Key_Left && (d == Direction::Start)) ||
+         (k->key() == Qt::Key_Left && (d == Direction::Right)) ||
+         (k->key() == Qt::Key_Right && (d == Direction::Left)) ||
+         (k->key() == Qt::Key_Down && (d == Direction::Up)) ||
+         (k->key() == Qt::Key_Up && (d == Direction::Down)))) {
+        switch(k->key()){
+            case Qt::Key_Up:
+                d = Direction::Up;
+                //qDebug() << "Up";
+                break;
+            case Qt::Key_Down:
+                d = Direction::Down;
+                //qDebug() << "Down";
+                break;
+            case Qt::Key_Left:
+                d = Direction::Left;
+                //qDebug() << "Left";
+                break;
+            case Qt::Key_Right:
+                d = Direction::Right;
+                //qDebug() << "Right";
+                break;
+            default:
+                break;
+        }
     }
 }
 
 void MainWindow::paintEvent(QPaintEvent *p) {
     Q_UNUSED(p);
     QPainter painter(this);
-    painter.setPen(applePen);
-    painter.setBrush(QBrush(Qt::red, Qt::SolidPattern));
-    painter.drawEllipse(apple.x(), apple.y(), sizeBlock, sizeBlock);
-
+    if(apple.x() > 0) {
+        painter.setPen(applePen);
+        painter.setBrush(QBrush(Qt::red, Qt::SolidPattern));
+        painter.drawEllipse(apple.x(), apple.y(), sizeBlock, sizeBlock);
+    }
     painter.setPen(snakePen);
     painter.setBrush(QBrush(Qt::blue, Qt::SolidPattern));
     for(size_t i = 0; i < snake.size(); i++) {
         if (i == 0) {
-            qDebug() << "First case, x is " << QString::number(snake[i].x()) << ", y is " << QString::number(snake[i].y());
+            //qDebug() << "First case, x is " << QString::number(snake[i].x()) << ", y is " << QString::number(snake[i].y());
             painter.drawEllipse(snake[i].x(), snake[i].y(), sizeBlock, sizeBlock);
         } else {
-            qDebug() << "Second case, x is " << QString::number(snake[i].x()) << ", y is " << QString::number(snake[i].y());
+            //qDebug() << "Second case, x is " << QString::number(snake[i].x()) << ", y is " << QString::number(snake[i].y());
             painter.fillRect(snake[i].x(), snake[i].y(), sizeBlock, sizeBlock, QBrush(Qt::blue, Qt::SolidPattern));
         }
     }

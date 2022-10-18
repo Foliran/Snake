@@ -15,6 +15,7 @@ public:
     ~MainWindow();
 
 private:
+    void start();
     void play();
     void spawnApple();
     void keyPressEvent(QKeyEvent *k);
